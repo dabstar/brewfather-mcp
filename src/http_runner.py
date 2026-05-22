@@ -42,7 +42,7 @@ def main(host: str, port: int, log_level: str) -> None:
     mcp.settings.log_level = log_level.upper() # type: ignore
 
     # Add auth middleware
-    mcp.add_middleware(TokenAuthMiddleware)
+    mcp.get_asgi_app().add_middleware(TokenAuthMiddleware)
     
     # Run the server with SSE transport
     try:
