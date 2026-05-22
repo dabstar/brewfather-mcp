@@ -1,14 +1,24 @@
 """HTTP/SSE runner for the Brewfather MCP server."""
-
 import asyncio
 import logging
+import os
 from typing import Optional
-
 import click
-
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
 from brewfather_mcp.server import mcp
 
 logger = logging.getLogger(__name__)
+
+
+class TokenAuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        expected = os.environ.get("MCP_AUTH_TOKEN")
+        if expected:
+            auth_header = request.headers.get("Authorization", "")
+            if auth_header != f"Bearer {expected}":
+                return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        return await call_next(request)
 
 
 @click.command()
@@ -30,6 +40,9 @@ def main(host: str, port: int, log_level: str) -> None:
     mcp.settings.host = host
     mcp.settings.port = port
     mcp.settings.log_level = log_level.upper() # type: ignore
+
+    # Add auth middleware
+    mcp.add_middleware(TokenAuthMiddleware)
     
     # Run the server with SSE transport
     try:
